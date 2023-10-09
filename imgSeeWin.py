@@ -20,6 +20,8 @@ import PythonMagick
 
 from icon import img
 
+BOTTOM_HEIGHT = 80
+
 WIDTH = 1000
 HEIGHT = 800
 PNG_TO_ICO = 0
@@ -52,7 +54,7 @@ class rootWin:
         self.root = root
         self.winSet()
         self.menuPlace()
-        self.canvas = tkinter.Canvas(self.root, width=self.window_width, height=self.window_height - 50)  # 画布
+        self.canvas = tkinter.Canvas(self.root, width=self.window_width, height=self.window_height - BOTTOM_HEIGHT)  # 画布
         # 绑定事件动作
         self.canvas.bind('<Double-Button-1>',
                          lambda event: self.getImgPath(filedialog.askopenfilename(filetypes=FileTypeList)))
@@ -67,6 +69,11 @@ class rootWin:
 
         self.canvas.pack(side=TOP)
         self.buttonsPlace()
+
+        # 创建图片详细信息标签
+        self.imageDetailLabel = Label(self.root, text="", anchor=W, padx=10, pady=5)
+        self.imageDetailLabel.pack(side=BOTTOM, fill=X)
+
         # 打开方式
         if len(sys.argv) >= 2:
             # print(sys.argv)
@@ -112,7 +119,9 @@ class rootWin:
             except ValueError:
                 return
         self.img = ImageTk.PhotoImage(re_image)  # 在canvas中展示图片
-        self.canvas.create_image(self.window_width // 2, (self.window_height - 50) // 2, anchor=CENTER, image=self.img)
+        self.canvas.create_image(self.window_width // 2, (self.window_height - BOTTOM_HEIGHT) // 2, anchor=CENTER, image=self.img)
+
+        self.updateImageDetail(self.imageList[self.imageIndex])
 
     # 放大图片
     def imgAmplification(self, event):
@@ -129,7 +138,7 @@ class rootWin:
             #     return
             self.img = ImageTk.PhotoImage(re_image)  # 在canvas中展示图片
             self.canvas.create_image(self.window_width // 2 + self.deltX,
-                                     (self.window_height - 50) // 2 + self.deltY,
+                                     (self.window_height - BOTTOM_HEIGHT) // 2 + self.deltY,
                                      anchor=CENTER,
                                      image=self.img)
         except AttributeError:
@@ -150,7 +159,7 @@ class rootWin:
             #     return
             self.img = ImageTk.PhotoImage(re_image)  # 在canvas中展示图片
             self.canvas.create_image(self.window_width // 2 + self.deltX,
-                                     (self.window_height - 50) // 2 + self.deltY,
+                                     (self.window_height - BOTTOM_HEIGHT) // 2 + self.deltY,
                                      anchor=CENTER,
                                      image=self.img)
         except AttributeError:
@@ -173,7 +182,7 @@ class rootWin:
         self.deltX = self.cacheX + event.x - self.baseX
         self.deltY = self.cacheY + event.y - self.baseY
         print("delt:", self.deltX, self.deltY)
-        self.canvas.create_image(self.window_width // 2 + self.deltX, (self.window_height - 50) // 2 + self.deltY,
+        self.canvas.create_image(self.window_width // 2 + self.deltX, (self.window_height - BOTTOM_HEIGHT) // 2 + self.deltY,
                                  anchor=CENTER, image=self.img)
 
     # 滚轮缩放事件
@@ -190,7 +199,7 @@ class rootWin:
                 self.window_width = self.root.winfo_width()
             if self.window_height != self.root.winfo_height():
                 self.window_height = self.root.winfo_height()
-        self.canvas.config(width=self.window_width, height=self.window_height - 50)
+        self.canvas.config(width=self.window_width, height=self.window_height - BOTTOM_HEIGHT)
         self.imageShow(LoadEn=False)
 
     # 图片拖动到窗口事件
@@ -199,20 +208,24 @@ class rootWin:
         filePath = file[0].decode('gbk')
         self.getImgPath(filePath)
 
-    # 获取文件路径
-    def getFilePath(self, file):
-
-        basePath = file
-        if basePath == "":
-            return
-        # print(self.Filepath[:self.Filepath.rfind('/')+1])
+    def updataImgList(self, basePath):
+        if basePath[-1] != '/':
+            basePath += '/'
         imgList = os.listdir(basePath)
         self.imageList.clear()
         for li in imgList:
             extensionName = li[li.rfind('.') + 1:]
-            # print(extensionName)
             if extensionName in ExtensionNameList:
-                self.imageList.append(basePath + '/' + li)
+                self.imageList.append(basePath + li)
+                # print(basePath + li)
+
+    # 获取文件路径
+    def getFilePath(self, file):
+        basePath = file
+        if basePath == "":
+            return
+        # print(self.Filepath[:self.Filepath.rfind('/')+1])
+        self.updataImgList(basePath)
         self.imageIndex = 0
         self.imageShow()
 
@@ -227,13 +240,7 @@ class rootWin:
         # print(self.Filepath[:self.Filepath.rfind('/')+1])
         filePath = filePath.replace('\\', '/')
         basePath = filePath[:filePath.rfind('/') + 1]
-        imgList = os.listdir(filePath[:filePath.rfind('/') + 1])
-        self.imageList.clear()
-        for li in imgList:
-            extensionName = li[li.rfind('.') + 1:]
-            # print(extensionName)
-            if extensionName in ExtensionNameList:
-                self.imageList.append(basePath + li)
+        self.updataImgList(basePath)
         self.imageIndex = self.imageList.index(basePath + filePath[filePath.rfind('/') + 1:])
         self.imageShow()
 
@@ -242,6 +249,10 @@ class rootWin:
         self.imageIndex += 1
         if self.imageIndex > len(self.imageList) - 1:
             self.imageIndex = 0
+        # 更新索引
+        filePath = self.imageList[self.imageIndex].replace('\\', '/')
+        basePath = filePath[:filePath.rfind('/') + 1]
+        self.updataImgList(basePath)
         self.imageShow()
 
     # 上一张图片
@@ -249,7 +260,46 @@ class rootWin:
         self.imageIndex -= 1
         if self.imageIndex < 0:
             self.imageIndex = len(self.imageList) - 1
+        # 更新索引
+        filePath = self.imageList[self.imageIndex].replace('\\', '/')
+        basePath = filePath[:filePath.rfind('/') + 1]
+        self.updataImgList(basePath)
         self.imageShow()
+
+    # 删除图片
+    def delThisImg(self):
+        # 删除图片
+        if len(self.imageList) == 0:
+            return
+
+        # 获取当前显示的图片路径
+        currentImagePath = self.imageList[self.imageIndex]
+
+        # 从图片列表中移除已删除的图片
+        self.imageList.remove(currentImagePath)
+
+        # 更新图片索引
+        if self.imageIndex >= len(self.imageList):
+            self.imageIndex = len(self.imageList) - 1
+
+        # 如果还有剩余图片，显示下一张图片
+        if len(self.imageList) > 0:
+            self.imageShow()
+        else:
+            # 如果没有剩余图片，清空显示区域
+            self.clearImageShow()
+
+        # 删除当前图片
+        try:
+            os.remove(currentImagePath)
+            # tkinter.messagebox.showinfo("成功", "图片删除成功")
+        except OSError:
+            tkinter.messagebox.showerror("错误", "图片删除失败")
+            return
+        # 更新索引
+        filePath = self.imageList[self.imageIndex].replace('\\', '/')
+        basePath = filePath[:filePath.rfind('/') + 1]
+        self.updataImgList(basePath)
 
     # 格式转换
     def formatConversion(self, species, path):
@@ -265,6 +315,20 @@ class rootWin:
             icoImg = PythonMagick.Image(self.imageList[self.imageIndex])
             icoImg.sample('128x128')
             icoImg.write(path)
+
+    def clearImageShow(self):
+        # 清空图片列表和索引
+        self.imageList = []
+        self.imageIndex = 0
+
+        # 清空图片显示区域
+        self.canvas.delete("all")
+
+    # 更新图片详细信息
+    def updateImageDetail(self, image):
+        width, height = self.image.size
+        self.imageDetailLabel.config(
+            text="图片名称: {}\t图片尺寸: {}x{}".format(image, width, height))
 
     # 菜单
     def menuPlace(self):
@@ -294,6 +358,9 @@ class rootWin:
         photo = PhotoImage(file=r".\img\last.png")
         self.photoLast = photo.subsample(6, 6)
 
+        photo = PhotoImage(file=r".\img\del.png")
+        self.photoDel = photo.subsample(10, 10)
+
         photo = PhotoImage(file=r".\img\next.png")
         self.photoNext = photo.subsample(6, 6)
 
@@ -301,6 +368,8 @@ class rootWin:
         buttonFrame.pack(side=TOP, pady=10)
         prevButton = Button(buttonFrame, image=self.photoLast, height=25, width=30, command=self.getPrevImg)
         prevButton.pack(side=LEFT, padx=5)
+        delButton = Button(buttonFrame, image=self.photoDel, height=25, width=30, command=self.delThisImg)
+        delButton.pack(side=LEFT, padx=5)
         lastButton = Button(buttonFrame, image=self.photoNext, height=25, width=30, command=self.getNextImg)
         lastButton.pack(side=LEFT, padx=5)
 
@@ -333,3 +402,4 @@ class rootWin:
         except BaseException:
             print(sys.argv[0], path)
         # os.remove(path)
+
